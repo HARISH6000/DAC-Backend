@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <title>String Storage DApp</title>
+</head>
+<body>
+  <div class="container">
+    <h1>String Storage DApp</h1>
+    
+    <!-- Connection Status -->
+    <div id="connection-status" class="status"></div>
+    
+    <!-- Input Group -->
+    <div class="input-group">
+      <input type="text" id="inputString" placeholder="Enter a number">
+      <button id="putButton">Put Number</button>
+    </div>
+    
+    <!-- Get String Button -->
+    <button id="getButton">Get Number</button>
+    <button id="favButton">fav Number</button>
+    
+    <!-- Output Display -->
+    <div id="output" class="output"></div>
+  </div>
+  
+  <!-- Scripts -->
+  <script src="web3.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
