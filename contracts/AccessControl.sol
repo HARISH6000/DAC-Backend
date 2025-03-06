@@ -1,6 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// Interface for RequestContract to retrieve request details
+interface IRequestContract {
+    enum AccessType { Read, Write, Both }
+    
+    struct Request {
+        uint requestId;
+        address hospital;
+        address patient;
+        string[] fileList;
+        uint deadline;
+        AccessType accessType;
+        bool isAll;
+        bool isProcessed;
+    }
+    
+    function getRequest(uint requestId) external view returns (Request memory);
+    function setRequestProcessed(uint requestId) external;
+}
+
 contract AccessControlContract {
     enum AccessType {NoAccess, Read, Write, Both}
     struct ValidationInfo {
@@ -9,6 +28,13 @@ contract AccessControlContract {
         uint deadline;
         string[] keys;
         uint lastCleanUp;
+    }
+
+    IRequestContract public requestContract;
+
+    // Constructor to initialize RequestContract address
+    constructor(address _requestContract) {
+        requestContract = IRequestContract(_requestContract);
     }
 
     mapping (address => mapping (address => mapping (string=>uint))) private accessList;
@@ -104,6 +130,48 @@ contract AccessControlContract {
         if (numRemoved > 0) {
             emit ExpiredKeysCleaned(msg.sender, hospitalAddress, numRemoved);
         }
+    }
+
+    // Function for patients to process a request and grant access
+    function processRequest(uint requestId) external returns (bool) {
+        // Retrieve the request from RequestContract
+        IRequestContract.Request memory req = requestContract.getRequest(requestId);
+
+        // Validate that the caller is the targeted patient
+        require(req.patient == msg.sender, "Only the targeted patient can process this request");
+
+        // Validate that the request hasn't been processed
+        require(!req.isProcessed, "Request already processed");
+
+        // Map RequestContract AccessType to AccessControlContract AccessType
+        // Since RequestContract AccessType (Read=0, Write=1, Both=2) needs to map to
+        // AccessControlContract AccessType (NoAccess=0, Read=1, Write=2, Both=3)
+        AccessType accessType;
+        if (uint(req.accessType) == 0) { // Read in RequestContract
+            accessType = AccessType.Read; // Read=1 in AccessControlContract
+        } else if (uint(req.accessType) == 1) { // Write in RequestContract
+            accessType = AccessType.Write; // Write=2 in AccessControlContract
+        } else if (uint(req.accessType) == 2) { // Both in RequestContract
+            accessType = AccessType.Both; // Both=3 in AccessControlContract
+        } else {
+            revert("Invalid access type");
+        }
+
+        // Call grantAccess with the request details
+        bool success = grantAccess(
+            req.hospital,
+            accessType,
+            req.isAll,
+            req.fileList,
+            req.deadline
+        );
+
+        // Mark the request as processed in RequestContract
+        if (success) {
+            requestContract.setRequestProcessed(requestId);
+        }
+
+        return success;
     }
 
 }
