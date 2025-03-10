@@ -174,5 +174,30 @@ contract AccessControlContract {
         return success;
     }
 
-}
+    function verifyFileAccess(address patient, address hospital, string[] memory fileHashes) external view returns (bool) {
+        ValidationInfo storage info = permissionList[patient][hospital];
+        
+        // Check if there are any permissions at all
+        if (info.deadline == 0) {
+            return false;
+        }
 
+        // If hospital has "isAll" access with appropriate permissions
+        if (info.isAll && info.deadline > block.timestamp) {
+            // Check if access type is sufficient (Read or Both)
+            return (info.accessType == AccessType.Read || info.accessType == AccessType.Both);
+        }
+
+        // For specific file access, verify each file hash
+        for (uint i = 0; i < fileHashes.length; i++) {
+            uint deadline = accessList[patient][hospital][fileHashes[i]];
+            if (deadline == 0 || deadline <= block.timestamp) {
+                return false; // If any file is inaccessible, return false
+            }
+        }
+
+        // Check if access type permits reading (Read or Both)
+        return (info.accessType == AccessType.Read || info.accessType == AccessType.Both);
+    }
+
+}
