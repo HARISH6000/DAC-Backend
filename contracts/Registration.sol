@@ -5,9 +5,10 @@ contract Registration {
     enum Role { Patient, Hospital }
 
     struct Participant {
-        string uniqueId; // Unique ID generated using SHA-256 of personal data
-        string name;     // Participant's name
-        Role role;       // Participant's role (Patient or Hospital)
+        string uniqueId;   // Unique ID generated using SHA-256 of personal data
+        string name;       // Participant's name
+        Role role;         // Participant's role (Patient or Hospital)
+        string publicKey;  // Participant's public key (e.g., hex-encoded)
     }
 
     // Mapping from blockchain address to participant details
@@ -28,7 +29,8 @@ contract Registration {
         address indexed participantAddress,
         string uniqueId,
         string name,
-        string role
+        string role,
+        string publicKey
     );
 
     // Modifier to check if the participant is not already registered
@@ -44,7 +46,8 @@ contract Registration {
     function registerParticipant(
         string memory uniqueId,
         string memory name,
-        string memory role
+        string memory role,
+        string memory publicKey
     ) public notRegistered {
         // Validate role and convert to enum
         Role participantRole;
@@ -64,7 +67,8 @@ contract Registration {
         participants[msg.sender] = Participant({
             uniqueId: uniqueId,
             name: name,
-            role: participantRole
+            role: participantRole,
+            publicKey: publicKey
         });
 
         // Mark as registered
@@ -73,7 +77,7 @@ contract Registration {
         // Mark the unique ID as used
         uidList[uniqueId] = true;
 
-        emit ParticipantRegistered(msg.sender, uniqueId, name, role);
+        emit ParticipantRegistered(msg.sender, uniqueId, name, role, publicKey);
     }
 
     // Function to validate if a participant is registered
@@ -92,7 +96,8 @@ contract Registration {
         returns (
             string memory uniqueId,
             string memory name,
-            string memory role
+            string memory role,
+            string memory publicKey
         )
     {
         require(
@@ -105,7 +110,8 @@ contract Registration {
         return (
             participant.uniqueId,
             participant.name,
-            roleStr
+            roleStr,
+            participant.publicKey
         );
     }
 
@@ -117,5 +123,18 @@ contract Registration {
     {
         require(isRegistered[requester], "Not a registered user");
         return uidList[uid];
+    }
+
+    // Function to get the public key of a participant
+    function getPublicKey(address participantAddress)
+        public
+        view
+        returns (string memory)
+    {
+        require(
+            isRegistered[participantAddress],
+            "Participant is not registered"
+        );
+        return participants[participantAddress].publicKey;
     }
 }
