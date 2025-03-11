@@ -26,7 +26,8 @@ contract AccessControlContract {
         AccessType accessType;
         bool isAll;
         uint deadline;
-        string[] keys;
+        uint writeDeadline;
+        string[] keys; 
         uint lastCleanUp;
     }
 
@@ -51,6 +52,9 @@ contract AccessControlContract {
         info.accessType=accessType;
         info.isAll=isAll;
         info.deadline=block.timestamp+deadline;
+        if (accessType==AccessType.Write || accessType== AccessType.Both){
+            info.writeDeadline=block.timestamp+deadline;
+        }
 
         if(info.lastCleanUp==0){
             info.lastCleanUp=block.timestamp;
@@ -200,4 +204,15 @@ contract AccessControlContract {
         return (info.accessType == AccessType.Read || info.accessType == AccessType.Both);
     }
 
+    function verifyFileWriteAccess(address patient, address hospital) external view returns (bool) {
+        ValidationInfo storage info = permissionList[patient][hospital];
+        
+        if (info.writeDeadline == 0 || info.writeDeadline <= block.timestamp) {
+            return false;
+        }
+
+        return info.accessType == AccessType.Write || info.accessType == AccessType.Both;
+    }
+
 }
+

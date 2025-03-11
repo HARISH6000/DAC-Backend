@@ -13,7 +13,13 @@ interface IRegistration {
 }
 
 interface IAccessControl {
-    function verifyFileAccess(address patient, address hospital, string[] memory fileHashes) external view returns (bool);
+    function verifyFileAccess(address entity, address hospital, string[] memory fileHashes) external view returns (bool);
+    function verifyFileWriteAccess(address entity, address hospital) external view returns (bool);
+}
+
+interface IFileRegistry {
+    function addKey(address patient, string[] calldata fileHashes, string[] calldata keyList) external returns (bool);
+    function getKeys(address patient, string[] calldata fileHashes) external view returns (string[] memory);
 }
 
 contract ValidationContract {
@@ -30,13 +36,16 @@ contract ValidationContract {
 
     IRegistration public registration;
     IAccessControl public accessControl;
+    IFileRegistry public fileRegistry;
 
-    event TokenGenerated(bytes32 indexed tokenHash, address indexed hospital, address indexed patient, string[] fileHashes, uint expiry);
+    event ReadAccessTokenGenerated(bytes32 indexed tokenHash, address indexed hospital, address indexed patient, string[] fileHashes, uint expiry);
     event TokenValidated(bytes32 indexed tokenHash, address indexed hospital);
+    event WriteAccessTokenGenerated(bytes32 indexed tokenHash, address indexed hospital, address indexed patient, uint expiry);
 
-    constructor(address _registration, address _accessControl) {
+    constructor(address _registration, address _accessControl,address _fileRegistry) {
         registration = IRegistration(_registration);
         accessControl = IAccessControl(_accessControl);
+        fileRegistry = IFileRegistry(_fileRegistry);
     }
 
     function requestFileAccess(address patient, string[] memory fileHashes) external returns (bytes32) {
@@ -63,11 +72,11 @@ contract ValidationContract {
             isUsed: false
         });
 
-        emit TokenGenerated(tokenHash, hospital, patient, fileHashes, expiry);
+        emit ReadAccessTokenGenerated(tokenHash, hospital, patient, fileHashes, expiry);
         return tokenHash;
     }
 
-    function validateToken(bytes32 tokenHash, bytes memory signature) external returns (bool) {
+    function validateToken(bytes32 tokenHash, bytes memory signature, bool isWrite, string[] memory fileHashes, string[] memory keyList) external returns (bool) {
         Token storage token = tokens[tokenHash];
         require(token.tokenHash != bytes32(0), "Invalid token");
         require(!token.isUsed, "Token already used");
@@ -92,7 +101,36 @@ contract ValidationContract {
 
         token.isUsed = true;
         emit TokenValidated(tokenHash, token.hospital);
-        return true; // Cloud retrieves fileHashes from event
+        if(isWrite){
+            require(fileRegistry.addKey(token.patient,fileHashes,keyList),"fileList length and KeyList length does not match");
+        }
+        return true;
+    }
+
+    function requestFileWriteAccess(address patient) external returns (bytes32) {
+        address hospital = msg.sender;
+        require(registration.isParticipantRegistered(hospital), "Hospital not registered");
+        (,, string memory role,) = registration.getParticipantDetails(hospital);
+        require(keccak256(abi.encodePacked(role)) == keccak256(abi.encodePacked("hospital")), "Caller must be a hospital");
+        require(registration.isParticipantRegistered(patient), "Patient not registered");
+        (,, string memory pRole,) = registration.getParticipantDetails(patient);
+        require(keccak256(abi.encodePacked(pRole)) == keccak256(abi.encodePacked("patient")), "patient address doesnt corresspond to patient role");
+        require(accessControl.verifyFileWriteAccess(patient, hospital), "No write access");
+
+        uint nonce = nonces[hospital]++;
+        bytes32 tokenHash = keccak256(abi.encodePacked(hospital, patient, "write", block.timestamp, nonce));
+        uint expiry = block.timestamp + 1 hours;
+
+        tokens[tokenHash] = Token({
+            tokenHash: tokenHash,
+            hospital: hospital,
+            patient: patient,
+            expiry: expiry,
+            isUsed: false
+        });
+
+        emit WriteAccessTokenGenerated(tokenHash, hospital, patient, expiry);
+        return tokenHash;
     }
 
     function cleanupExpiredTokens(bytes32[] memory tokenHashes) external {
