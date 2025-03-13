@@ -12,7 +12,6 @@ interface IRequestContract {
         string[] fileList;
         uint deadline;
         AccessType accessType;
-        bool isAll;
         bool isProcessed;
     }
     
@@ -20,56 +19,60 @@ interface IRequestContract {
     function setRequestProcessed(uint requestId) external;
 }
 
+interface IFileRegistry {
+    function addKey(address patient, string[] calldata fileHashes, string[] calldata keyList) external returns (bool);
+    function getKeys(address patient, string[] calldata fileHashes) external view returns (string[] memory);
+}
+
 contract AccessControlContract {
     enum AccessType {NoAccess, Read, Write, Both}
     struct ValidationInfo {
         AccessType accessType;
-        bool isAll;
         uint deadline;
-        uint writeDeadline;
         string[] keys; 
         uint lastCleanUp;
     }
 
     IRequestContract public requestContract;
+    IFileRegistry public fileRegistry;
 
     // Constructor to initialize RequestContract address
-    constructor(address _requestContract) {
+    constructor(address _requestContract, address _fileRegistry) {
         requestContract = IRequestContract(_requestContract);
+        fileRegistry = IFileRegistry(_fileRegistry);
     }
 
     mapping (address => mapping (address => mapping (string=>uint))) private accessList;
     mapping (address => mapping(address => ValidationInfo)) private permissionList;
 
-    event AccessGranted(address indexed patient, address hospitalAddress, AccessType accessType, bool isAll, string[] keys, uint deadline);
+    event AccessGranted(address indexed patient, address hospitalAddress, AccessType accessType, string[] keys, uint deadline);
     event AccessRemoved(address indexed patient, address hospitalAddress, string[] keys);
     event ExpiredKeysCleaned(address indexed patient, address hospitalAddress, uint numKeysRemoved);
     event AllAccessRemoved(address indexed patient, address hospitalAddress);
 
-    function grantAccess(address hospitalAddress, AccessType accessType,bool isAll, string[] memory fileList,uint deadline)public returns(bool){
+    function grantAccess(address hospitalAddress, AccessType accessType, string[] memory fileList, string[] memory keyList,uint deadline)public returns(bool){
         
         ValidationInfo storage info = permissionList[msg.sender][hospitalAddress];
         info.accessType=accessType;
-        info.isAll=isAll;
-        info.deadline=block.timestamp+deadline;
+        info.deadline=block.timestamp;
         if (accessType==AccessType.Write || accessType== AccessType.Both){
-            info.writeDeadline=block.timestamp+deadline;
+            info.deadline=block.timestamp+deadline;
         }
 
         if(info.lastCleanUp==0){
             info.lastCleanUp=block.timestamp;
         }
 
-        if (!isAll){
-            for (uint i=0; i<fileList.length;i++){
-                if(accessList[msg.sender][hospitalAddress][fileList[i]]==0){
-                    info.keys.push(fileList[i]);
-                }
-                accessList[msg.sender][hospitalAddress][fileList[i]]=block.timestamp + deadline;
+        
+        for (uint i=0; i<fileList.length;i++){
+            if(accessList[msg.sender][hospitalAddress][fileList[i]]==0){
+                info.keys.push(fileList[i]);
             }
+            accessList[msg.sender][hospitalAddress][fileList[i]]=block.timestamp + deadline;
         }
-        emit AccessGranted(msg.sender, hospitalAddress, accessType, isAll, fileList, info.deadline);
-        if (info.lastCleanUp<block.timestamp-100 days){
+        fileRegistry.addKey(hospitalAddress, fileList, keyList);
+        emit AccessGranted(msg.sender, hospitalAddress, accessType, fileList, info.deadline);
+        if (info.lastCleanUp<block.timestamp-10 days){
             cleanupExpiredKeys(hospitalAddress);
             info.lastCleanUp=block.timestamp;
         }
@@ -92,7 +95,7 @@ contract AccessControlContract {
                 accessList[msg.sender][hospitalAddress][list[i]]=block.timestamp;
             }
         }
-        if (info.lastCleanUp<block.timestamp-100 days){
+        if (info.lastCleanUp<block.timestamp-10 days){
             cleanupExpiredKeys(hospitalAddress);
             info.lastCleanUp=block.timestamp;
         }
@@ -101,7 +104,7 @@ contract AccessControlContract {
 
     function removeAllAcess(address hospitalAddress)public{
         ValidationInfo storage info=permissionList[msg.sender][hospitalAddress];
-        require(info.deadline > 0, "No access permissions exist for this hospital");
+        require(info.deadline>0, "No access permissions exist for this hospital");
         for (uint i = 0; i < info.keys.length; i++) {
             string memory key = info.keys[i];
             delete accessList[msg.sender][hospitalAddress][key]; // Clear each entry
@@ -137,7 +140,7 @@ contract AccessControlContract {
     }
 
     // Function for patients to process a request and grant access
-    function processRequest(uint requestId) external returns (bool) {
+    function processRequest(uint requestId, string[] memory keyList) external returns (bool) {
         // Retrieve the request from RequestContract
         IRequestContract.Request memory req = requestContract.getRequest(requestId);
 
@@ -165,8 +168,8 @@ contract AccessControlContract {
         bool success = grantAccess(
             req.hospital,
             accessType,
-            req.isAll,
             req.fileList,
+            keyList,
             req.deadline
         );
 
@@ -186,12 +189,6 @@ contract AccessControlContract {
             return false;
         }
 
-        // If hospital has "isAll" access with appropriate permissions
-        if (info.isAll && info.deadline > block.timestamp) {
-            // Check if access type is sufficient (Read or Both)
-            return (info.accessType == AccessType.Read || info.accessType == AccessType.Both);
-        }
-
         // For specific file access, verify each file hash
         for (uint i = 0; i < fileHashes.length; i++) {
             uint deadline = accessList[patient][hospital][fileHashes[i]];
@@ -207,7 +204,7 @@ contract AccessControlContract {
     function verifyFileWriteAccess(address patient, address hospital) external view returns (bool) {
         ValidationInfo storage info = permissionList[patient][hospital];
         
-        if (info.writeDeadline == 0 || info.writeDeadline <= block.timestamp) {
+        if (info.deadline == 0 || info.deadline <= block.timestamp) {
             return false;
         }
 
@@ -215,4 +212,3 @@ contract AccessControlContract {
     }
 
 }
-

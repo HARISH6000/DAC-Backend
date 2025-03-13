@@ -13,14 +13,13 @@ contract RequestContract {
 
     // Struct to hold request details
     struct Request {
-        uint requestId;        // Unique identifier for the request
-        address hospital;      // Address of the hospital making the request
-        address patient;       // Address of the patient being requested access from
-        string[] fileList;     // List of file IDs requested
-        uint deadline;         // Desired deadline for access (duration of access if granted)
-        AccessType accessType; // Type of access requested (Read, Write, Both)
-        bool isAll;            // Whether the request is for all files
-        bool isProcessed;      // Whether the patient has processed the request
+        uint requestId;
+        address hospital;
+        address patient;
+        string[] fileList;
+        uint deadline;
+        AccessType accessType;
+        bool isProcessed;
     }
 
     // Global mapping of all requests by requestId
@@ -46,7 +45,6 @@ contract RequestContract {
         string[] fileList,
         uint deadline,
         AccessType accessType,
-        bool isAll,
         bool isProcessed
     );
 
@@ -61,8 +59,7 @@ contract RequestContract {
         address patient,
         string[] memory fileList,
         uint deadline,
-        AccessType accessType,
-        bool isAll
+        AccessType accessType
     ) external returns (uint) {
         // Verify the caller is a registered hospital
         require(registration.isParticipantRegistered(msg.sender), "Caller must be a registered participant");
@@ -80,11 +77,6 @@ contract RequestContract {
             "Target must be a patient"
         );
 
-        // Validate fileList (must be non-empty if isAll is false)
-        if (!isAll) {
-            require(fileList.length > 0, "File list cannot be empty if isAll is false");
-        }
-
         // Generate a new request ID
         requestCounter++;
         uint newRequestId = requestCounter;
@@ -97,7 +89,6 @@ contract RequestContract {
             fileList: fileList,
             deadline: deadline,
             accessType: accessType,
-            isAll: isAll,
             isProcessed: false
         });
 
@@ -116,7 +107,6 @@ contract RequestContract {
             fileList,
             deadline,
             accessType,
-            isAll,
             false
         );
 
