@@ -13,13 +13,13 @@ interface IRegistration {
 }
 
 interface IAccessControl {
-    function verifyFileAccess(address entity, address hospital, string[] memory fileHashes) external view returns (bool);
-    function verifyFileWriteAccess(address entity, address hospital) external view returns (bool);
+    function verifyFileAccess(address patient, address hospital, string[] memory fileHashes) external view returns (bool);
+    function verifyFileWriteAccess(address patient, address hospital) external view returns (bool);
 }
 
 interface IFileRegistry {
-    function addKey(address patient, string[] calldata fileHashes, string[] calldata keyList) external returns (bool);
-    function getKeys(address patient, string[] calldata fileHashes) external view returns (string[] memory);
+    function addKey(address entity, string[] calldata fileHashes, string[] calldata keyList) external returns (bool);
+    function getKeys(address entity, string[] calldata fileHashes) external view returns (string[] memory);
 }
 
 contract ValidationContract {
@@ -93,7 +93,7 @@ contract ValidationContract {
         assembly {
             r := mload(add(signature, 32))
             s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 65)))
+            v := byte(0, mload(add(signature, 96)))
         }
 
         address signer = ecrecover(messageHash, v, r, s);

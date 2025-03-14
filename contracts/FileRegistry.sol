@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 contract FileRegistry{
     mapping(address => mapping( string => string)) keys;
 
-     function addKey(address entity, string[] memory fileHashes, string[] memory keyList)private returns(bool) {
+     function addKey(address entity, string[] memory fileHashes, string[] memory keyList)public returns(bool) {
         //if the write operation is a delete operation
         if(fileHashes.length>0 && keyList.length==0){
             for(uint i=0;i<fileHashes.length;i++){

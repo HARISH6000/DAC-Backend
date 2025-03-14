@@ -20,8 +20,8 @@ interface IRequestContract {
 }
 
 interface IFileRegistry {
-    function addKey(address patient, string[] calldata fileHashes, string[] calldata keyList) external returns (bool);
-    function getKeys(address patient, string[] calldata fileHashes) external view returns (string[] memory);
+    function addKey(address entity, string[] calldata fileHashes, string[] calldata keyList) external returns (bool);
+    function getKeys(address entity, string[] calldata fileHashes) external view returns (string[] memory);
 }
 
 contract AccessControlContract {
@@ -212,3 +212,4 @@ contract AccessControlContract {
     }
 
 }
+

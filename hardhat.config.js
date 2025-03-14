@@ -6,7 +6,7 @@ module.exports = {
   networks: {
     localnet: {
       url: 'http://127.0.0.1:8545',
-      accounts: ['0x4a324aaaf138dce74659cbb138fc61cd60f46170ed0b00fe74e2a9e5e4515a61'] //Replace with account private key
+      accounts: ['0x568cf19a13ad7be03e5adc2976ead55202cd6e0daa86c6160701f69f91b3b167'] //Replace with account private key
     }
   }
 };
