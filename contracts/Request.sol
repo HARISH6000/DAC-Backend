@@ -55,12 +55,7 @@ contract RequestContract {
     }
 
     // Function for hospitals to make a request
-    function makeRequest(
-        address patient,
-        string[] memory fileList,
-        uint deadline,
-        AccessType accessType
-    ) external returns (uint) {
+    function makeRequest( address patient, string[] memory fileList, uint deadline, AccessType accessType) external returns (uint) {
         // Verify the caller is a registered hospital
         require(registration.isParticipantRegistered(msg.sender), "Caller must be a registered participant");
         (,, string memory callerRole) = registration.getParticipantDetails(msg.sender);

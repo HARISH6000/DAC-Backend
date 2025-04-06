@@ -1,7 +1,7 @@
 {
-  "RegistrationModule#Registration": "0x6AA47BAc9F25A79294Ea10C6cbf1E1b646D8d891",
-  "FileRegistryModule#FileRegistry": "0x2d485e41499B3C4d121E868Fa44002a29d8e163A",
-  "RequestModule#RequestContract": "0xc072FaD3283ABc8Cb459a927945Ad0230C6bF630",
-  "AccessControlModule#AccessControlContract": "0x27a4ae273B1939B5FBcc41f769706De024A7CD70",
-  "ValidationModule#ValidationContract": "0x87ABF0867fed638612B85Bcb4C486cBCcE5d98F9"
+  "RegistrationModule#Registration": "0x029C86e33ef49De0a3258bcCaB0E6AA97297cC69",
+  "RequestModule#RequestContract": "0x932514b10BE55084C80E0fd11DcD04de380e1B5c",
+  "FileRegistryModule#FileRegistry": "0x030b5cA4A4E6236b6Ebbb2c6815Ae772C2cD4c2F",
+  "AccessControlModule#AccessControlContract": "0xE3Fef1272E85Fe09bFAb88D4Fee026F6c597C07F",
+  "ValidationModule#ValidationContract": "0x185787e1575F6Dc68cD99b8656e7093d15A146D2"
 }

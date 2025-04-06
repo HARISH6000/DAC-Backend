@@ -20,6 +20,7 @@ interface IAccessControl {
 interface IFileRegistry {
     function addKey(address entity, string[] calldata fileHashes, string[] calldata keyList) external returns (bool);
     function getKeys(address entity, string[] calldata fileHashes) external view returns (string[] memory);
+    function doesFilesExist(address entity, string[] calldata fileHashes)external view returns(bool);
 }
 
 contract ValidationContract {
@@ -48,7 +49,7 @@ contract ValidationContract {
         fileRegistry = IFileRegistry(_fileRegistry);
     }
 
-    function requestFileAccess(address patient, string[] memory fileHashes) external returns (bytes32) {
+    function requestFileReadAccessToken(address patient, string[] memory fileHashes) external returns (bytes32) {
         address hospital = msg.sender;
 
         require(registration.isParticipantRegistered(hospital), "Hospital not registered");
@@ -107,7 +108,7 @@ contract ValidationContract {
         return true;
     }
 
-    function requestFileWriteAccess(address patient) external returns (bytes32) {
+    function requestFileWriteAccessToken(address patient) external returns (bytes32) {
         address hospital = msg.sender;
         require(registration.isParticipantRegistered(hospital), "Hospital not registered");
         (,, string memory role,) = registration.getParticipantDetails(hospital);
@@ -131,6 +132,48 @@ contract ValidationContract {
 
         emit WriteAccessTokenGenerated(tokenHash, hospital, patient, expiry);
         return tokenHash;
+    }
+
+    function requestOwnFilesReadToken(string[] memory fileHashes)public returns(bytes32){
+        require(registration.isParticipantRegistered(msg.sender), "Patient not registered");
+        require(fileHashes.length > 0, "File hash list cannot be empty");
+        require(fileRegistry.doesFilesExist(msg.sender,fileHashes),"Requested file/files doesnt exist");
+
+        uint nonce = nonces[msg.sender]++;
+        bytes32 tokenHash = keccak256(abi.encodePacked(msg.sender, msg.sender, fileHashes[0], block.timestamp, nonce));
+        uint expiry = block.timestamp + 1 hours;
+
+        tokens[tokenHash] = Token({
+            tokenHash: tokenHash,
+            hospital: msg.sender,
+            patient: msg.sender,
+            expiry: expiry,
+            isUsed: false
+        });
+
+        emit ReadAccessTokenGenerated(tokenHash, msg.sender, msg.sender, fileHashes, expiry);
+        return tokenHash;
+        
+    }
+
+    function requestOwnFilesWriteToken()public returns(bytes32){
+        require(registration.isParticipantRegistered(msg.sender), "Patient not registered");
+        
+        uint nonce = nonces[msg.sender]++;
+        bytes32 tokenHash = keccak256(abi.encodePacked(msg.sender, msg.sender, "write", block.timestamp, nonce));
+        uint expiry = block.timestamp + 1 hours;
+
+        tokens[tokenHash] = Token({
+            tokenHash: tokenHash,
+            hospital: msg.sender,
+            patient: msg.sender,
+            expiry: expiry,
+            isUsed: false
+        });
+
+        emit WriteAccessTokenGenerated(tokenHash, msg.sender, msg.sender, expiry);
+        return tokenHash;
+        
     }
 
     function cleanupExpiredTokens(bytes32[] memory tokenHashes) external {

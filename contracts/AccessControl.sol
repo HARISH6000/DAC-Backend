@@ -149,10 +149,7 @@ contract AccessControlContract {
 
         // Validate that the request hasn't been processed
         require(!req.isProcessed, "Request already processed");
-
-        // Map RequestContract AccessType to AccessControlContract AccessType
-        // Since RequestContract AccessType (Read=0, Write=1, Both=2) needs to map to
-        // AccessControlContract AccessType (NoAccess=0, Read=1, Write=2, Both=3)
+        
         AccessType accessType;
         if (uint(req.accessType) == 0) { // Read in RequestContract
             accessType = AccessType.Read; // Read=1 in AccessControlContract
